@@ -15,13 +15,21 @@ endif()
 #  message(FATAL_ERROR "Windows is not supported as a target platform.")
 #endif()
 
-# --- Windows support ----------------------------------------------
+# --- Windows support ------------------------------------------------
 if (WIN32)
-  # Use MinGW gcc in the MSYS2 tool‑chain provided by setup‑msys2
-  add_definitions(-D_WIN32_WINNT=0x0601)        # for sockets
-  add_definitions(-D_CRT_SECURE_NO_WARNINGS)    # MSVC secure CRT
-  # pthreads is POSIX only – SNAPHU uses OpenMP instead when available
-  find_library(WS2_32 ws2_32 REQUIRED)
+  # Common definitions for any Windows compiler
+  add_definitions(-D_WIN32_WINNT=0x0601)        # Win7+
+  add_definitions(-D_CRT_SECURE_NO_WARNINGS)    # silence MSVC warnings
+
+  # Link the Winsock 2 import library (ships with the Windows SDK)
+  target_link_libraries(snaphu PRIVATE ws2_32)
+
+  # OpenMP:  /openmp  for MSVC,  -fopenmp for MinGW/Clang
+  if (MSVC)
+    target_compile_options(snaphu PRIVATE /openmp)
+  else()
+    target_compile_options(snaphu PRIVATE -fopenmp)
+  endif()
 endif()
 
 project(${SKBUILD_PROJECT_NAME} LANGUAGES C)
