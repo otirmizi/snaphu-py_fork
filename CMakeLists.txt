@@ -11,8 +11,17 @@ if(NOT DEFINED SKBUILD_PROJECT_NAME)
   )
 endif()
 
-if(WIN32)
-  message(FATAL_ERROR "Windows is not supported as a target platform.")
+#if(WIN32)
+#  message(FATAL_ERROR "Windows is not supported as a target platform.")
+#endif()
+
+# --- Windows support ----------------------------------------------
+if (WIN32)
+  # Use MinGW gcc in the MSYS2 tool‑chain provided by setup‑msys2
+  add_definitions(-D_WIN32_WINNT=0x0601)        # for sockets
+  add_definitions(-D_CRT_SECURE_NO_WARNINGS)    # MSVC secure CRT
+  # pthreads is POSIX only – SNAPHU uses OpenMP instead when available
+  find_library(WS2_32 ws2_32 REQUIRED)
 endif()
 
 project(${SKBUILD_PROJECT_NAME} LANGUAGES C)
@@ -43,8 +52,14 @@ add_executable(
 )
 
 # Link against the C math library libm.
-find_library(C_MATH_LIBRARY m REQUIRED)
-target_link_libraries(snaphu PRIVATE ${C_MATH_LIBRARY})
+#find_library(C_MATH_LIBRARY m REQUIRED)
+#target_link_libraries(snaphu PRIVATE ${C_MATH_LIBRARY})
+
+if (NOT WIN32)
+  find_library(C_MATH_LIBRARY m REQUIRED)
+  target_link_libraries(snaphu PRIVATE ${C_MATH_LIBRARY})
+endif()
+target_link_libraries(snaphu PRIVATE ${WS2_32})
 
 # Install the executable at the specified location. Scikit-build-core takes care of
 # setting the install prefix to `site-packages`.
