@@ -20,16 +20,6 @@ if (WIN32)
   # Common definitions for any Windows compiler
   add_definitions(-D_WIN32_WINNT=0x0601)        # Win7+
   add_definitions(-D_CRT_SECURE_NO_WARNINGS)    # silence MSVC warnings
-
-  # Link the Winsock 2 import library (ships with the Windows SDK)
-  target_link_libraries(snaphu PRIVATE ws2_32)
-
-  # OpenMP:  /openmp  for MSVC,  -fopenmp for MinGW/Clang
-  if (MSVC)
-    target_compile_options(snaphu PRIVATE /openmp)
-  else()
-    target_compile_options(snaphu PRIVATE -fopenmp)
-  endif()
 endif()
 
 project(${SKBUILD_PROJECT_NAME} LANGUAGES C)
@@ -58,6 +48,17 @@ add_executable(
   ${SNAPHU_SRC_SUBDIR}/snaphu_tile.c
   ${SNAPHU_SRC_SUBDIR}/snaphu_util.c
 )
+
+# ----- Windows‑specific link and OpenMP flags -----------------
+if (WIN32)
+  target_link_libraries(snaphu PRIVATE ws2_32)
+
+  if (MSVC)
+    target_compile_options(snaphu PRIVATE /openmp)
+  else()
+    target_compile_options(snaphu PRIVATE -fopenmp)
+  endif()
+endif()
 
 # Link against the C math library libm.
 #find_library(C_MATH_LIBRARY m REQUIRED)
