@@ -31,9 +31,11 @@ def get_snaphu_executable() -> Generator[Path, None, None]:
         The file path of the SNAPHU executable.
     """
     files = importlib.resources.files(__package__)
-    with importlib.resources.as_file(files / "snaphu") as snaphu:
+    #with importlib.resources.as_file(files / "snaphu") as snaphu:
+    #    yield snaphu
+    name = "snaphu.exe" if os.name == "nt" else "snaphu"
+    with importlib.resources.as_file(files / name) as snaphu:
         yield snaphu
-
 
 def get_snaphu_version() -> str:
     """

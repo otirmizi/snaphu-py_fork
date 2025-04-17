@@ -1,0 +1,45 @@
+name: Build‑Windows‑Wheels
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  wheels:
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    # 1. Install MSYS2 + MinGW packages
+    - uses: msys2/setup-msys2@v2         # sets up POSIX tool‑chain on GHA  :contentReference[oaicite:0]{index=0}
+      with:
+        update: true
+        install: >-
+          mingw-w64-x86_64-gcc
+          mingw-w64-x86_64-cmake
+          mingw-w64-x86_64-make
+
+    # 2. Install the Python build front‑end
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'           # used only to run cibuildwheel itself
+
+    # 3. Build wheels for every CPython (cp38‑cp312) with cibuildwheel
+    - name: Build wheels
+      uses: pypa/cibuildwheel@v2.17.0    # latest as of Apr 2025         # cross‑platform wheel builder  :contentReference[oaicite:1]{index=1}
+      env:
+        CIBW_BUILD: "cp3?-win_amd64"
+        CIBW_BEFORE_BUILD: >
+          pip install scikit-build-core ninja
+        CIBW_ENVIRONMENT: >
+          PATH="$PATH;C:\\msys64\\mingw64\\bin"     # expose MinGW gcc/ld to CMake
+        CIBW_TEST_COMMAND: "python -c \"import snaphu, numpy as np, os; snaphu.unwrap(np.zeros((8,8),np.complex64), np.ones((8,8))); print('OK')\""
+
+    # 4. Upload the wheels as CI artifacts
+    - uses: actions/upload-artifact@v4
+      with:
+        name: snaphu-wheels
+        path: wheelhouse/*.whl
