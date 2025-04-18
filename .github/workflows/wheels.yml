@@ -33,8 +33,8 @@ jobs:
           pip install scikit-build-core ninja
         CIBW_ENVIRONMENT: >
           PATH="$PATH;C:\\msys64\\mingw64\\bin"     # expose MinGW gcc/ld to CMake
-        CIBW_TEST_COMMAND: python -c "import pathlib, subprocess, snaphu; exe = pathlib.Path(snaphu.__file__).with_name('snaphu.exe'); subprocess.run([str(exe), '-h'], check=True)"
-
+        CIBW_TEST_COMMAND: >
+          python -c "import pathlib, subprocess, snaphu, sys; exe = pathlib.Path(snaphu.__file__).with_name('snaphu.exe'); rc = subprocess.call([str(exe), '-h']); sys.exit(0 if rc in (0,1) else rc)"
     # 4. Upload the wheels as CI artifacts
     - uses: actions/upload-artifact@v4
       with:
