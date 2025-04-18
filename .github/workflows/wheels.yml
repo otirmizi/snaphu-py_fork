@@ -1,7 +1,7 @@
 name: Build‑Windows‑Wheels
 
 on:
-  yaml\non:\n workflow_dispatch:\n
+  workflow_dispatch: # run only when you press the button
 
 jobs:
   wheels:
