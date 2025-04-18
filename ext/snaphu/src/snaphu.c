@@ -30,6 +30,12 @@
 #define NO_CS2
 #define DISABLE_FORK
 typedef int pid_t;          /* MSVC needs this typedef */
+  #ifndef SIGKILL
+    #define SIGKILL 9   /* never actually used on Windows build */
+  #endif
+  #ifndef SIGHUP
+    #define SIGHUP 1
+  #endif
 #endif
 
 #ifndef _WIN32           /* ------ POSIX‑only section ------ */
@@ -620,11 +626,12 @@ int UnwrapTile(infileT *infiles, outfileT *outfiles, paramT *params,
   MaskNodes(nrow,ncol,nodes,ground,mag);
 
   /* if we have a single tile, trap signals for dumping results */
+ #ifndef _WIN32
   if(params->ntilerow==1 && params->ntilecol==1){
     signal(SIGINT,SetDump);
     signal(SIGHUP,SetDump);
   }
-
+  #endif
   /* main loop: loop over flow increments and sources */
   if(!allmasked){
     fprintf(sp1,"Running nonlinear network flow optimizer\n");
@@ -745,11 +752,13 @@ int UnwrapTile(infileT *infiles, outfileT *outfiles, paramT *params,
   } /* end if all pixels masked */
 
   /* if we have single tile, return signal handlers to default behavior */
+  #ifndef _WIN32
   if(params->ntilerow==1 && params->ntilecol==1){
     signal(SIGINT,SIG_DFL);
     signal(SIGHUP,SIG_DFL);
   }
-
+  #endif
+  
   /* free some memory */
   Free2DArray((void **)apexes,2*nrow-1);
   Free2DArray((void **)iscandidate,2*nrow-1);
