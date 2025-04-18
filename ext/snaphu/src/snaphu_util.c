@@ -1145,64 +1145,69 @@ int StringToLong(char *str, long *l){
  * Note that SIGKILL usually cannot be caught.  No return value.
  */
 int CatchSignals(void (*SigHandler)(int)){
-
-  signal(SIGHUP,SigHandler);
+  
+  #ifndef _WIN32
+  signal(SIGHUP,  handler);
+  signal(SIGQUIT, handler);
+  signal(SIGPIPE, handler);
+  signal(SIGALRM, handler);
+  signal(SIGBUS,  handler);
+  #endif
+  
   signal(SIGINT,SigHandler);
-  signal(SIGQUIT,SigHandler);
   signal(SIGILL,SigHandler);
   signal(SIGABRT,SigHandler);
   signal(SIGFPE,SigHandler);
   signal(SIGSEGV,SigHandler);
-  signal(SIGPIPE,SigHandler);
-  signal(SIGALRM,SigHandler);
   signal(SIGTERM,SigHandler);
-  signal(SIGBUS,SigHandler);
   return(0);
 
 }
 
-
 /* function: SetDump()
  * -------------------
  * Set the global variable dumpresults_global to TRUE if SIGINT or SIGHUP
- * signals recieved.  Also sets requestedstop_global if SIGINT signal 
- * received.  This function should only be called via signal() when 
+ * signals received.  Also sets requestedstop_global if SIGINT signal
+ * received.  This function should only be called via signal() when
  * a signal is caught.
- */ 
-void SetDump(int signum){
+ */
+void SetDump(int signum)
+{
+    if (signum == SIGINT) {
 
-  if(signum==SIGINT){
+        /* exit immediately if we receive another interrupt */
+        signal(SIGINT, exit);
 
-    /* exit if we receive another interrupt */
-    signal(SIGINT,exit);
+        /* print nice message and set global variables so program knows to exit */
+        fflush(NULL);
+        fprintf(sp0,
+            "\n\nSIGINT signal caught.  Please wait for graceful exit\n"
+            "(One more interrupt signal halts job)\n");
+        dumpresults_global = TRUE;
+        requestedstop_global = TRUE;
 
-    /* print nice message and set global variables so program knows to exit */
-    fflush(NULL);
-    fprintf(sp0,"\n\nSIGINT signal caught.  Please wait for graceful exit\n");
-    fprintf(sp0,"(One more interrupt signal halts job)\n");
-    dumpresults_global=TRUE;
-    requestedstop_global=TRUE;
+#ifndef _WIN32   /* ---------- SIGHUP branch: skip on Windows ---------- */
+    } else if (signum == SIGHUP) {
 
-  }else if(signum==SIGHUP){
+        /* make sure the hang‑up signal doesn't revert to default behavior */
+        signal(SIGHUP, SetDump);
 
-    /* make sure the hangup signal doesn't revert to default behavior */
-    signal(SIGHUP,SetDump);
+        /* print a nice message, and set the dump variable */
+        fflush(NULL);
+        fprintf(sp0, "\n\nSIGHUP signal caught.  Dumping results\n");
+        dumpresults_global = TRUE;
+#endif           /* ---------------------------------------------------- */
 
-    /* print a nice message, and set the dump variable */
-    fflush(NULL);
-    fprintf(sp0,"\n\nSIGHUP signal caught.  Dumping results\n");
-    dumpresults_global=TRUE;
+    } else {
+        fflush(NULL);
+        fprintf(sp0, "WARNING: Invalid signal (%d) passed to signal handler\n",
+                signum);
+    }
 
-  }else{
-    fflush(NULL);
-    fprintf(sp0,"WARNING: Invalid signal (%d) passed to signal handler\n",
-            signum);
-  }
-
-  /* done */
-  return;
-
+    /* done */
+    return;
 }
+
 
 
 /* function: KillChildrenExit()
@@ -1249,29 +1254,40 @@ void SignalExit(int signum){
  * Starts the wall clock and CPU timers for use in conjunction with
  * DisplayElapsedTime().
  */
-int StartTimers(time_t *tstart, double *cputimestart){
+int StartTimers(time_t *tstart, double *cputimestart)
+{
+    /* wall‑clock timer works on every platform */
+    *tstart = time(NULL);
 
+#ifdef _WIN32                 /* ---------- Windows stub ---------- */
 
-  struct rusage usagebuf;
+    /* MSVC/Win32 lacks getrusage; set CPU timer to sentinel */
+    *cputimestart = -1.0;
+    return 0;
 
-  *tstart=time(NULL);
-  *cputimestart=-1.0;
-  if(!getrusage(RUSAGE_SELF,&usagebuf)){
-    *cputimestart=(double )(usagebuf.ru_utime.tv_sec
-                            +(usagebuf.ru_utime.tv_usec/(double )1000000)
-                            +usagebuf.ru_stime.tv_sec
-                            +(usagebuf.ru_stime.tv_usec/(double )1000000));
-    if(!getrusage(RUSAGE_CHILDREN,&usagebuf)){
-      *cputimestart+=(double )(usagebuf.ru_utime.tv_sec
-                               +(usagebuf.ru_utime.tv_usec/(double )1000000)
-                               +usagebuf.ru_stime.tv_sec
-                               +(usagebuf.ru_stime.tv_usec/(double )1000000));
+#else                          /* ---------- POSIX implementation ---------- */
+
+    struct rusage usagebuf;
+
+    *cputimestart = -1.0;
+    if (!getrusage(RUSAGE_SELF, &usagebuf)) {
+        *cputimestart =
+            usagebuf.ru_utime.tv_sec +
+            usagebuf.ru_utime.tv_usec / 1e6 +
+            usagebuf.ru_stime.tv_sec +
+            usagebuf.ru_stime.tv_usec / 1e6;
+
+        if (!getrusage(RUSAGE_CHILDREN, &usagebuf)) {
+            *cputimestart +=
+                usagebuf.ru_utime.tv_sec +
+                usagebuf.ru_utime.tv_usec / 1e6 +
+                usagebuf.ru_stime.tv_sec +
+                usagebuf.ru_stime.tv_usec / 1e6;
+        }
     }
-  }
+    return 0;
 
-  /* done */
-  return(0);
-
+#endif /* _WIN32 */
 }
 
 
