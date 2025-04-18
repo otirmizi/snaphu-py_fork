@@ -986,8 +986,12 @@ int Read2DRowColFileRows(void ***arr, char *filename, long linelen,
 int SetDumpAll(outfileT *outfiles, paramT *params);
 int SetStreamPointers(void);
 int SetVerboseOut(paramT *params);
+
+#ifndef _WIN32
 int ChildResetStreamPointers(pid_t pid, long tilerow, long tilecol,
                              paramT *params);
+#endif
+
 int DumpIncrCostFiles(incrcostT **incrcosts, long iincrcostfile, 
                       long nflow, long nrow, long ncol);
 int MakeTileDir(paramT *params, outfileT *outfiles);
