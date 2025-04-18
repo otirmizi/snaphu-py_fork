@@ -29,6 +29,7 @@
   #include <sys/resource.h>
   #include <sys/mman.h>   /* if present */
   #include <sys/wait.h>
+  #define DISABLE_FORK
 #else                    /* ------ Windows fall‑back ------- */
   #include <io.h>         /* MSVC / MinGW replacement for unistd bits */
   /* Optional: bring in WinSock or WinAPI if the code later needs it */
@@ -282,7 +283,11 @@ int Unwrap(infileT *infiles, outfileT *outfiles, paramT *params,
                 /* parent kills children and exits if there was a fork error */
                 fflush(NULL);
                 fprintf(sp0,"Error while forking\nAbort\n");
-                kill(0,SIGKILL);
+                
+                #ifndef _WIN32
+                  kill(0,SIGKILL);
+                #endif
+                
                 exit(ABNORMAL_EXIT);
 
               }else if(pid==0){
@@ -344,7 +349,11 @@ int Unwrap(infileT *infiles, outfileT *outfiles, paramT *params,
                 fprintf(sp0,"Unexpected or abnormal exit of child process %ld\n"
                         "Abort\n",(long )pid);
                 signal(SIGTERM,SIG_IGN);
+                
+                #ifndef _WIN32
                 kill(0,SIGTERM);
+                #endif
+                
                 exit(ABNORMAL_EXIT);
               }
 
