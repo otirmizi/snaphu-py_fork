@@ -36,6 +36,25 @@
   #include <windows.h>
   /* Disable features that rely on POSIX shared memory, fork, etc. */
   #define NO_CS2
+  /* Dummy rusage structure */
+  struct rusage {
+    struct { long tv_sec; long tv_usec; } ru_utime;
+    struct { long tv_sec; long tv_usec; } ru_stime;
+  };
+  #define RUSAGE_SELF      0
+  static int getrusage(int who, struct rusage *r)
+  {
+    FILETIME c, e, k, u;
+    if (!GetProcessTimes(GetCurrentProcess(), &c, &e, &k, &u)) return -1;
+    ULARGE_INTEGER t;
+    t.LowPart  = u.dwLowDateTime; t.HighPart = u.dwHighDateTime;
+    r->ru_utime.tv_sec  = (long)(t.QuadPart / 10000000ULL);
+    r->ru_utime.tv_usec = (long)((t.QuadPart % 10000000ULL) / 10);
+    t.LowPart  = k.dwLowDateTime; t.HighPart = k.dwHighDateTime;
+    r->ru_stime.tv_sec  = (long)(t.QuadPart / 10000000ULL);
+    r->ru_stime.tv_usec = (long)((t.QuadPart % 10000000ULL) / 10);
+    return 0;
+  }
 #endif
 
 /* static (local) function prototypes */
@@ -1231,7 +1250,8 @@ void SignalExit(int signum){
  * DisplayElapsedTime().
  */
 int StartTimers(time_t *tstart, double *cputimestart){
-  
+
+
   struct rusage usagebuf;
 
   *tstart=time(NULL);
