@@ -23,38 +23,69 @@
 
 #include "snaphu.h"
 
+/* ------------------------------------------------------------------ */
+/*                Windows‑specific portability layer                  */
+/* ------------------------------------------------------------------ */
 #ifdef _WIN32
-  /* Disable the Unix multiprocessing / signal code on Windows */
-#include <io.h>
-#include <windows.h>
-#define NO_CS2
-#define DISABLE_FORK
-typedef int pid_t;          /* MSVC needs this typedef */
+  #include <io.h>
+  #include <windows.h>
+
+  /* Disable code paths that rely on POSIX shared memory & fork() */
+  #define NO_CS2
+  #define DISABLE_FORK
+
+  /* Minimal POSIX type / constant aliases */
+  typedef int pid_t;
   #ifndef SIGKILL
-    #define SIGKILL 9   /* never actually used on Windows build */
+    #define SIGKILL 9
   #endif
   #ifndef SIGHUP
     #define SIGHUP 1
   #endif
-#endif
 
-#ifndef _WIN32           /* ------ POSIX‑only section ------ */
+  /* ---------- Stub replacements for missing POSIX calls ---------- */
+  /* Sleep:  seconds ➜ WinAPI milliseconds */
+  static unsigned int sleep(unsigned int seconds)
+  {
+      Sleep(seconds * 1000);
+      return 0;
+  }
+
+  /* These should never run because DISABLE_FORK skips that code,
+     but they satisfy the linker when references remain in parents. */
+  static int  fork(void)                 { return -1; }
+  static int  kill(pid_t pid,int sig)    { (void)pid; (void)sig; return -1; }
+  static int  wait(int *status)          { if (status) *status = 0; return -1; }
+
+  /* wait()‑status macros expected by legacy code */
+  #ifndef WIFEXITED
+    #define WIFEXITED(x)   1
+  #endif
+  #ifndef WEXITSTATUS
+    #define WEXITSTATUS(x) 0
+  #endif
+#endif  /* _WIN32 */
+/* ------------------------------------------------------------------ */
+
+/* ---------------------- POSIX‑only headers ------------------------ */
+#ifndef _WIN32
   #include <unistd.h>
   #include <sys/time.h>
   #include <sys/resource.h>
-  #include <sys/mman.h>   /* if present */
+  #include <sys/mman.h>
   #include <sys/wait.h>
 #endif
+/* ------------------------------------------------------------------ */
 
 
 /* ----------------------------------------------------------------- */
-/* Unix-only helper to spawn a tile‑processing child and manage it   */
+/* Unix‑only helper to spawn a tile‑processing child and manage it   */
 /* ----------------------------------------------------------------- */
-#ifndef DISABLE_FORK           /*  <—— everything inside this guard */
+#ifndef DISABLE_FORK
 static void
 kill_and_wait(pid_t pid, int sig)
 {
-    kill(pid, sig);           /* uses SIGKILL, SIGHUP, etc. */
+    kill(pid, sig);            /* uses SIGKILL, SIGHUP, etc. */
     waitpid(pid, NULL, 0);
 }
 
