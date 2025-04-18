@@ -88,7 +88,17 @@
 #define MAXRES               SCHAR_MAX
 #define MINRES               SCHAR_MIN
 #define PROBCOSTP            (-99.999)
-#define NULLFILE             "/dev/null"
+
+/* ------------------------------------------------------------------ */
+/*  Path to the system “bit‑bucket” device                            */
+/* ------------------------------------------------------------------ */
+#ifdef _WIN32
+  /* Windows understands the DOS device name “NUL” instead of /dev/null */
+  #define NULLFILE "NUL"
+#else
+  #define NULLFILE "/dev/null"
+#endif
+  
 #define DEF_ERRORSTREAM      stderr
 #define DEF_OUTPUTSTREAM     stdout
 #define DEF_VERBOSESTREAM    NULL
