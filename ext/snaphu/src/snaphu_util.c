@@ -1296,52 +1296,57 @@ int StartTimers(time_t *tstart, double *cputimestart)
  * Displays the elapsed wall clock and CPU times for the process and its
  * children.  Times should be initialized at the start of the program with
  * StartTimers().  The code is written to show the total processor time
- * for the parent process and all of its children, but whether or not 
- * this is actually done depends on the implementation of the system time 
+ * for the parent process and all of its children, but whether or not
+ * this is actually done depends on the implementation of the system time
  * functions.
  */
-int DisplayElapsedTime(time_t tstart, double cputimestart){
+int DisplayElapsedTime(time_t tstart, double cputimestart)
+{
+    double cputime  = -1.0;   /* sentinel: “CPU timer unavailable” */
+    double walltime = 0.0;
+    long   hours, minutes;
+    time_t tstop;
 
-  double cputime, walltime, seconds;
-  long hours, minutes;
-  time_t tstop;
-  struct rusage usagebuf;
+#ifndef _WIN32                     /* -------- POSIX branch -------- */
+    struct rusage usagebuf;
 
-  cputime=-1.0;
-  if(!getrusage(RUSAGE_CHILDREN,&usagebuf)){
-    cputime=(double )(usagebuf.ru_utime.tv_sec
-                       +(usagebuf.ru_utime.tv_usec/(double )1000000)
-                       +usagebuf.ru_stime.tv_sec
-                       +(usagebuf.ru_stime.tv_usec/(double )1000000));
-    if(!getrusage(RUSAGE_SELF,&usagebuf)){
-      cputime+=(double )(usagebuf.ru_utime.tv_sec
-                         +(usagebuf.ru_utime.tv_usec/(double )1000000)
-                         +usagebuf.ru_stime.tv_sec
-                         +(usagebuf.ru_stime.tv_usec/(double )1000000));
+    if (!getrusage(RUSAGE_CHILDREN, &usagebuf)) {
+        cputime = usagebuf.ru_utime.tv_sec +
+                  usagebuf.ru_utime.tv_usec / 1e6 +
+                  usagebuf.ru_stime.tv_sec +
+                  usagebuf.ru_stime.tv_usec / 1e6;
+
+        if (!getrusage(RUSAGE_SELF, &usagebuf)) {
+            cputime += usagebuf.ru_utime.tv_sec +
+                       usagebuf.ru_utime.tv_usec / 1e6 +
+                       usagebuf.ru_stime.tv_sec +
+                       usagebuf.ru_stime.tv_usec / 1e6;
+        }
     }
-  }
-  tstop=time(NULL);
-  if(cputime>0 && cputimestart>=0){
-    cputime-=cputimestart;
-    hours=(long )floor(cputime/3600);
-    minutes=(long )floor((cputime-3600*hours)/60);
-    seconds=cputime-3600*hours-60*minutes;
-    fprintf(sp1,"Elapsed processor time:   %ld:%02ld:%05.2f\n",
-            hours,minutes,seconds);
-  }
-  if(tstart>0 && tstop>0){
-    walltime=tstop-tstart;
-    hours=(long )floor(walltime/3600);
-    minutes=(long )floor((walltime-3600*hours)/60);
-    seconds=walltime-3600*hours-60*minutes;
-    fprintf(sp1,"Elapsed wall clock time:  %ld:%02ld:%02ld\n",
-            hours,minutes,(long )seconds);
-  }
+#endif                              /* ------------------------------ */
 
-  /* done */
-  return(0);
+    /* wall‑clock time works everywhere */
+    tstop = time(NULL);
 
+    if (cputime > 0 && cputimestart >= 0) {
+        cputime -= cputimestart;
+        hours   = (long)floor(cputime / 3600.0);
+        minutes = (long)floor((cputime - 3600 * hours) / 60.0);
+        fprintf(sp1, "Elapsed processor time:   %ld:%02ld:%05.2f\n",
+                hours, minutes, cputime - 3600 * hours - 60 * minutes);
+    }
+
+    if (tstart > 0 && tstop > 0) {
+        walltime = difftime(tstop, tstart);
+        hours    = (long)floor(walltime / 3600.0);
+        minutes  = (long)floor((walltime - 3600 * hours) / 60.0);
+        fprintf(sp1, "Elapsed wall clock time:  %ld:%02ld:%02ld\n",
+                hours, minutes, (long)(walltime - 3600 * hours - 60 * minutes));
+    }
+
+    return 0;
 }
+
 
 
 /* function: LongCompare()
