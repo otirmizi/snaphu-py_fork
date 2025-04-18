@@ -987,6 +987,10 @@ int SetDumpAll(outfileT *outfiles, paramT *params);
 int SetStreamPointers(void);
 int SetVerboseOut(paramT *params);
 
+#ifdef _WIN32
+  typedef int pid_t;
+#endif
+
 #ifndef _WIN32
 int ChildResetStreamPointers(pid_t pid, long tilerow, long tilecol,
                              paramT *params);
