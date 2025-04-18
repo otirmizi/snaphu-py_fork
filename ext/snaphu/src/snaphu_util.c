@@ -1215,16 +1215,18 @@ void SetDump(int signum)
  * Signal handler that sends a KILL signal to all processes in the group
  * so that children exit when parent exits.
  */
-void KillChildrenExit(int signum){
+void KillChildrenExit(int signum)
+{
+#ifndef _WIN32              /* ---- POSIX implementation ---- */
+    /* forward signal to every process in the current process group */
+    kill(0, SIGTERM);
+#endif                       /* ------------------------------ */
 
-  fflush(NULL);
-  fprintf(sp0,"Parent received signal %d\nKilling children and exiting\n",
-          signum);
-  fflush(NULL);
-  signal(SIGTERM,SIG_IGN);
-  kill(0,SIGTERM);
-  exit(ABNORMAL_EXIT);
-
+    /* flush & exit parent */
+    fflush(NULL);
+    fprintf(sp0, "\nAbort — signal %d received\n", signum);
+    exit(ABNORMAL_EXIT);
+  
   /* done */
   return;
 
