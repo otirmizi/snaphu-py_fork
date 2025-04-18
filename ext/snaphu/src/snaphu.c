@@ -23,20 +23,46 @@
 
 #include "snaphu.h"
 
+#ifdef _WIN32
+  /* Disable the Unix multiprocessing / signal code on Windows */
+#include <io.h>
+#include <windows.h>
+#define NO_CS2
+#define DISABLE_FORK
+typedef int pid_t;          /* MSVC needs this typedef */
+#endif
+
 #ifndef _WIN32           /* ------ POSIX‑only section ------ */
   #include <unistd.h>
   #include <sys/time.h>
   #include <sys/resource.h>
   #include <sys/mman.h>   /* if present */
   #include <sys/wait.h>
-  #define DISABLE_FORK
-#else                    /* ------ Windows fall‑back ------- */
-  #include <io.h>         /* MSVC / MinGW replacement for unistd bits */
-  /* Optional: bring in WinSock or WinAPI if the code later needs it */
-  /* #include <windows.h> */
-  /* Disable features that rely on POSIX shared memory, fork, etc. */
-  #define NO_CS2
 #endif
+
+
+/* ----------------------------------------------------------------- */
+/* Unix-only helper to spawn a tile‑processing child and manage it   */
+/* ----------------------------------------------------------------- */
+#ifndef DISABLE_FORK           /*  <—— everything inside this guard */
+static void
+kill_and_wait(pid_t pid, int sig)
+{
+    kill(pid, sig);           /* uses SIGKILL, SIGHUP, etc. */
+    waitpid(pid, NULL, 0);
+}
+
+static pid_t
+spawn_tile_process(/* args */)
+{
+    pid_t pid = fork();
+    if (pid == 0) {
+        /* child work … */
+        _exit(0);
+    }
+    return pid;
+}
+#endif  /* DISABLE_FORK */
 
 /* global (external) variable definitions */
 
