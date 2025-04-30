@@ -368,6 +368,7 @@ def unwrap(  # type: ignore[no-untyped-def]
             CONNCOMPFILE {conncomp_file}
             CONNCOMPOUTTYPE UINT
             LINELENGTH {igram.shape[1]}
+            NLINES {igram.shape[0]}
             NCORRLOOKS {nlooks}
             STATCOSTMODE {cost.upper()}
             INITMETHOD {init.upper()}
